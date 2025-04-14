@@ -5,7 +5,6 @@ def generate_social_network(num_nodes=500, model='watts_strogatz'):
     """
     Generates a synthetic social network.
     """
-    G = None
     if model == 'erdos_renyi':
         G = nx.erdos_renyi_graph(num_nodes, 0.05)
     elif model == 'barabasi_albert':
