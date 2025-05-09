@@ -20,12 +20,10 @@ st.markdown("""
     /* Main container */
     .main {
         padding: 2rem;
-        background-color: #ffffff;
     }
     
     /* Navbar styling */
     .navbar {
-        background-color: #ffffff;
         padding: 1rem;
         margin-bottom: 2rem;
         border-radius: 8px;
@@ -33,51 +31,46 @@ st.markdown("""
     }
     
     .navbar-title {
-        color: #1a237e;
         font-size: 1.5rem;
         font-weight: bold;
         margin-bottom: 0.5rem;
-    }
+        text-align:center;
+            }
     
     .navbar-links {
         display: flex;
         gap: 1rem;
+        font-size: 1rem;
+        justify-content: center;
+        padding: 1rem;
     }
     
     .navbar-link {
-        color: #1a237e;
-        text-decoration: none;
+        color: #ADD8E6 !important;
+        text-decoration: none !important;
         padding: 0.5rem 1rem;
         border-radius: 4px;
         transition: background-color 0.3s;
     }
     
     .navbar-link:hover {
-        background-color: #283593;
+        background-color: #efefef;
+        text-decoration: underline !important;
     }
     
     /* Button styling */
     .stButton>button {
         width: 100%;
-        background-color: #ffffff;
-        color: #1a237e;
         padding: 0.5rem 1rem;
-        border: 1px solid #1a237e;
         border-radius: 4px;
         cursor: pointer;
         transition: background-color 0.3s;
     }
-    
-    .stButton>button:hover {
-        background-color: #283593;
-        color: #ffffff;
-    }
+
     
     /* Card styling */
     .card {
-        background-color: #ffffff;
         padding: 1.5rem;
-        border: 1px solid #1a237e;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         margin-bottom: 1rem;
@@ -85,7 +78,6 @@ st.markdown("""
     
     /* Metric styling */
     .metric-card {
-        background-color: #ffffff;
         padding: 1rem;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -94,7 +86,6 @@ st.markdown("""
     
     /* Plot styling */
     .plot-container {
-        background-color: #ffffff;
         padding: 1rem;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -103,20 +94,9 @@ st.markdown("""
     
     /* Expander styling */
     .stExpander {
-        background-color: #ffffff;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         margin: 1rem 0;
-    }
-    
-    /* Slider styling */
-    .stSlider {
-        background-color: #ffffff;
-    }
-    
-    /* Selectbox styling */
-    .stSelectbox {
-        background-color: #ffffff;
     }
 </style>
 """, unsafe_allow_html=True)
