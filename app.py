@@ -6,94 +6,219 @@ from src.generate_network import generate_social_network
 from src.disease_model import DiseaseModel, DiseaseParameters, DiseaseState
 from src.policy_engine import PolicyEngine, Policy, PolicyTrigger
 from src.visualize_network import create_network_figure, create_time_series_plot, create_heatmap, create_animated_infection_visualization
-from src.batch_interface import display_batch_simulation_interface
 import pandas as pd
 from typing import Dict, List
 import time
 
-# Page Config
+# Page Config must be the first Streamlit command
 st.set_page_config(
-    page_title="Advanced Disease Spread Simulation",
+    page_title="Disease Spread Simulation",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# Title
-st.title("🦠 Advanced Disease Spread Simulation")
+# Custom CSS for professional styling
 st.markdown("""
-This simulation models disease spread in social networks with various intervention strategies.
-Explore how different parameters and policies affect the spread of disease.
-""")
+<style>
+    /* Main container */
+    .main {
+        padding: 2rem;
+        background-color: #ffffff;
+    }
+    
+    /* Navbar styling */
+    .navbar {
+        background-color: #ffffff;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .navbar-title {
+        color: #1a237e;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .navbar-links {
+        display: flex;
+        gap: 1rem;
+            
+    }
+    
+    .navbar-link {
+        color: #1a237e;
+        text-decoration: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+    }
+    
+    .navbar-link:hover {
+        background-color: #283593;
+    }
+    
+    /* Button styling */
+    .stButton>button {
+        width: 100%;
+        background-color: #ffffff;
+        color: #1a237e;
+        padding: 0.5rem 1rem;
+        border: 1px solid #1a237e;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
 
-# Sidebar
-st.sidebar.header("Simulation Parameters")
+    .welcome-card{
+        background-color: #ffffff;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 1rem 0;
+    }
+    
+    .stButton>button:hover {
+        background-color: #283593;
+        color: #ffffff;
+    }
+    
+    /* Card styling */
+    .card {
+        background-color: #ffffff;
+        padding: 1.5rem;
+        border: 1px solid #1a237e;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 1rem;
+    }
+    
+    /* Metric styling */
+    .metric-card {
+        background-color: #ffffff;
+        padding: 1rem;
+        border: 1px solid #1a237e;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    
+    /* Plot styling */
+    .plot-container {
+        background-color: #ffffff;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 1rem;
+    }
+    
+    /* Expander styling */
+    .stExpander {
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 1rem 0;
+    }
+    
+    /* Slider styling */
+    .stSlider {
+        background-color: #ffffff;
+    }
+    
+    /* Selectbox styling */
+    .stSelectbox {
+        background-color: #ffffff;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Navbar
+st.markdown("""
+<div class="navbar">
+    <div class="navbar-title">🦠 Disease Spread Simulation</div>
+    <div class="navbar-links">
+        <a href="/" target="_self" class="navbar-link">Main Simulation</a>
+        <a href="/batch_simulation" target="_self" class="navbar-link">Batch Analysis</a>
+        <a href="/policy_interventions" target="_self" class="navbar-link">Policy Interventions</a>
+        <a href="/model_comparison" target="_self" class="navbar-link">Model Comparison</a>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Main content
+st.markdown("""
+<div class="welcome-card">
+    <h2>Welcome to the Disease Spread Simulation</h2>
+    <p>This simulation models disease spread in social networks with various intervention strategies.
+    Explore how different parameters and policies affect the spread of disease.</p>
+</div>
+""", unsafe_allow_html=True)
 
 # Network Parameters
-st.sidebar.subheader("Network Settings")
-num_nodes = st.sidebar.slider("Population Size", 100, 2000, 500, 50)
-network_model = st.sidebar.selectbox(
-    "Network Model",
-    ["watts_strogatz", "erdos_renyi", "barabasi_albert"],
-    help="Different network topologies simulate different social structures"
-)
+with st.expander("Network Settings", expanded=True):
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        num_nodes = st.slider(
+            "Population Size",
+            100, 2000, 500,
+            help="Number of individuals in the population"
+        )
+        network_model = st.selectbox(
+            "Network Model",
+            ["watts_strogatz", "erdos_renyi", "barabasi_albert"],
+            help="Different network topologies simulate different social structures"
+        )
+    
+    with col2:
+        model_type = st.selectbox(
+            "Model Type",
+            ["SIR", "SEIR", "SIRD"],
+            help="SIR: Basic model, SEIR: Includes exposed state, SIRD: Includes death state"
+        )
 
-# Disease Model Parameters
-st.sidebar.subheader("Disease Model")
-model_type = st.sidebar.selectbox(
-    "Model Type",
-    ["SIR", "SEIR", "SIRD"],
-    help="SIR: Basic model, SEIR: Includes exposed state, SIRD: Includes death state"
-)
-
-transmission_rate = st.sidebar.slider(
-    "Transmission Rate (β)",
-    0.0, 1.0, 0.5, 0.01,
-    help="Probability of disease transmission per contact"
-)
-recovery_rate = st.sidebar.slider(
-    "Recovery Rate (γ)",
-    0.0, 1.0, 0.1, 0.01,
-    help="Probability of recovery per timestep"
-)
-mortality_rate = st.sidebar.slider(
-    "Mortality Rate (δ)",
-    0.0, 1.0, 0.01, 0.005,
-    help="Probability of death instead of recovery"
-)
+# Disease Parameters
+with st.expander("Disease Parameters", expanded=True):
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        transmission_rate = st.slider(
+            "Transmission Rate (β)",
+            0.0, 1.0, 0.5, 0.01,
+            help="Probability of disease transmission per contact"
+        )
+    
+    with col2:
+        recovery_rate = st.slider(
+            "Recovery Rate (γ)",
+            0.0, 1.0, 0.1, 0.01,
+            help="Probability of recovery per timestep"
+        )
+    
+    with col3:
+        mortality_rate = st.slider(
+            "Mortality Rate (δ)",
+            0.0, 1.0, 0.01, 0.005,
+            help="Probability of death instead of recovery"
+        )
 
 # Healthcare Parameters
-st.sidebar.subheader("Healthcare System")
-healthcare_capacity = st.sidebar.slider(
-    "Healthcare Capacity",
-    10, 500, 100, 10,
-    help="Maximum number of simultaneous infections before healthcare system overwhelmed"
-)
+with st.expander("Healthcare System", expanded=True):
+    healthcare_capacity = st.slider(
+        "Healthcare Capacity",
+        10, 500, 100, 10,
+        help="Maximum number of simultaneous infections before healthcare system overwhelmed"
+    )
 
 # Initial Infection Parameters
-st.sidebar.subheader("Initial Conditions")
-initial_infection_rate = st.sidebar.slider(
-    "Initial Infection Rate",
-    0.0, 0.1, 0.01, 0.001,
-    help="Percentage of population initially infected"
-)
-
-# Policy Parameters
-st.sidebar.subheader("Intervention Policies")
-lockdown_threshold = st.sidebar.slider(
-    "Lockdown Threshold",
-    0.0, 1.0, 0.2, 0.01,
-    help="Infection rate at which lockdown measures are implemented"
-)
-vaccination_coverage = st.sidebar.slider(
-    "Vaccination Coverage",
-    0.0, 1.0, 0.0, 0.05,
-    help="Percentage of population to vaccinate"
-)
-vaccination_strategy = st.sidebar.selectbox(
-    "Vaccination Strategy",
-    ["random", "targeted"],
-    help="Random: Uniform distribution, Targeted: Focus on high-degree nodes"
-)
+with st.expander("Initial Conditions", expanded=True):
+    initial_infection_rate = st.slider(
+        "Initial Infection Rate",
+        0.0, 0.1, 0.01, 0.001,
+        help="Percentage of population initially infected"
+    )
 
 # Initialize session state
 if "simulation" not in st.session_state:
@@ -104,7 +229,7 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # Generate Network Button
-if st.sidebar.button("🛠️ Generate New Network"):
+if st.button("🛠️ Generate New Network", key="generate_network"):
     G = generate_social_network(num_nodes, network_model)
     params = DiseaseParameters(
         transmission_rate=transmission_rate,
@@ -130,42 +255,18 @@ if st.sidebar.button("🛠️ Generate New Network"):
     
     st.session_state.policy_engine = PolicyEngine()
     st.session_state.history = []
-    
-    # Add policies
-    st.session_state.policy_engine.add_policy(Policy(
-        name="Lockdown",
-        trigger=PolicyTrigger.INFECTION_THRESHOLD,
-        threshold=lockdown_threshold,
-        action=lambda: st.session_state.simulation.apply_lockdown(lockdown_threshold),
-        params={}
-    ))
-    
-    if vaccination_coverage > 0:
-        st.session_state.policy_engine.add_policy(Policy(
-            name="Vaccination",
-            trigger=PolicyTrigger.INFECTION_THRESHOLD,
-            threshold=0.0,  # Immediate vaccination
-            action=lambda: st.session_state.simulation.apply_vaccination(
-                vaccination_coverage,
-                vaccination_strategy
-            ),
-            params={}
-        ))
-    
     st.success("New network generated with specified parameters!")
 
 # Main Simulation Area
 if st.session_state.simulation:
-    col1, col2 = st.columns([2, 1])
+    # Create tabs for different visualizations
+    tab1, tab2, tab3, tab4 = st.tabs(["Network View", "Animated Spread", "Statistics", "Heatmap"])
     
-    with col1:
-        st.subheader("Network Visualization")
+    with tab1:
+        col1, col2 = st.columns([2, 1])
         
-        # Create tabs for different visualizations
-        tab1, tab2 = st.tabs(["Static View", "Animated Infection Spread"])
-        
-        with tab1:
-            # Static network visualization
+        with col1:
+            st.markdown("### Network Visualization")
             fig = create_network_figure(
                 st.session_state.simulation.graph,
                 st.session_state.simulation.states,
@@ -173,107 +274,74 @@ if st.session_state.simulation:
             )
             st.plotly_chart(fig, use_container_width=True)
         
-        with tab2:
-            # Animated infection visualization
-            if st.session_state.history and "infection_sources" in st.session_state.history[-1]:
-                anim_fig = create_animated_infection_visualization(
-                    st.session_state.simulation.graph,
-                    st.session_state.simulation.states,
-                    st.session_state.history[-1]["infection_sources"]
-                )
-                st.plotly_chart(anim_fig, use_container_width=True)
-            else:
-                st.info("No new infections to animate.")
-        
-        # Display infection history
+        with col2:
+            st.markdown("### Simulation Controls")
+            if st.button("▶️ Run One Step", key="step"):
+                state_counts = st.session_state.simulation.step()
+                st.session_state.history.append(state_counts)
+                st.session_state.policy_engine.evaluate_policies(state_counts)
+                st.rerun()
+            
+            if st.button("⏩ Run 10 Steps", key="run_10"):
+                for _ in range(10):
+                    state_counts = st.session_state.simulation.step()
+                    st.session_state.history.append(state_counts)
+                    st.session_state.policy_engine.evaluate_policies(state_counts)
+                st.rerun()
+            
+            if st.button("🔄 Reset Simulation", key="reset"):
+                st.session_state.simulation = None
+                st.session_state.policy_engine = PolicyEngine()
+                st.session_state.history = []
+                st.rerun()
+    
+    with tab2:
+        st.markdown("### Animated Disease Spread")
         if st.session_state.history and "infection_sources" in st.session_state.history[-1]:
-            st.subheader("Recent Infections")
-            infection_sources = st.session_state.history[-1]["infection_sources"]
-            if infection_sources:
-                infection_data = []
-                for infected, source in infection_sources.items():
-                    infection_data.append({
-                        "Infected Node": infected,
-                        "Source Node": source,
-                        "Time Step": len(st.session_state.history) - 1
-                    })
-                st.dataframe(pd.DataFrame(infection_data))
-            else:
-                st.info("No new infections in the last step.")
+            anim_fig = create_animated_infection_visualization(
+                st.session_state.simulation.graph,
+                st.session_state.simulation.states,
+                st.session_state.history[-1]["infection_sources"]
+            )
+            st.plotly_chart(anim_fig, use_container_width=True)
+        else:
+            st.info("No new infections to animate.")
+    
+    with tab3:
+        # Time Series Plot
+        st.markdown("### Population State Over Time")
+        if st.session_state.history:
+            fig = create_time_series_plot(
+                st.session_state.history,
+                f"{model_type} Model Simulation"
+            )
+            st.plotly_chart(fig, use_container_width=True)
         
-        # Create heatmap
-        st.subheader("Infection Density Heatmap")
+        # Current Statistics
+        st.markdown("### Current Statistics")
+        if st.session_state.history:
+            current_state = st.session_state.history[-1]
+            col1, col2, col3, col4, col5 = st.columns(5)
+            
+            with col1:
+                st.metric("Susceptible", current_state.get("S", 0))
+            with col2:
+                st.metric("Exposed", current_state.get("E", 0))
+            with col3:
+                st.metric("Infected", current_state.get("I", 0))
+            with col4:
+                st.metric("Recovered", current_state.get("R", 0))
+            with col5:
+                st.metric("Deceased", current_state.get("D", 0))
+    
+    with tab4:
+        st.markdown("### Infection Density Heatmap")
         heatmap_fig = create_heatmap(
             st.session_state.simulation.graph,
             st.session_state.simulation.states
         )
         st.plotly_chart(heatmap_fig, use_container_width=True)
 
-    with col2:
-        st.subheader("Simulation Controls")
-        if st.button("▶️ Run One Step"):
-            state_counts = st.session_state.simulation.step()
-            st.session_state.history.append(state_counts)
-            st.session_state.policy_engine.evaluate_policies(state_counts)
-            st.rerun()
-            
-        if st.button("⏩ Run 10 Steps"):
-            for _ in range(10):
-                state_counts = st.session_state.simulation.step()
-                st.session_state.history.append(state_counts)
-                st.session_state.policy_engine.evaluate_policies(state_counts)
-            st.rerun()
-            
-        if st.button("🔄 Reset Simulation"):
-            st.session_state.simulation = None
-            st.session_state.policy_engine = PolicyEngine()
-            st.session_state.history = []
-            st.rerun()
-
-    # Time Series Plot
-    st.subheader("Population State Over Time")
-    if st.session_state.history:
-        fig = create_time_series_plot(
-            st.session_state.history,
-            f"{model_type} Model Simulation"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    # Policy History
-    st.subheader("Policy Interventions")
-    policy_history = st.session_state.policy_engine.get_policy_history()
-    if policy_history:
-        st.dataframe(pd.DataFrame(policy_history))
-    else:
-        st.info("No policies have been activated yet.")
-    
-    # Current Statistics
-    st.subheader("Current Statistics")
-    if st.session_state.history:
-        current_state = st.session_state.history[-1]
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        with col1:
-            st.metric("Susceptible", current_state.get("S", 0))
-        with col2:
-            st.metric("Exposed", current_state.get("E", 0))
-        with col3:
-            st.metric("Infected", current_state.get("I", 0))
-        with col4:
-            st.metric("Recovered", current_state.get("R", 0))
-        with col5:
-            st.metric("Deceased", current_state.get("D", 0))
-            
-        # Healthcare Status
-        if st.session_state.simulation.healthcare_overwhelmed:
-            st.error("⚠️ Healthcare System Overwhelmed")
-        else:
-            st.success("✅ Healthcare System Operating Normally")
-
 else:
     st.info("⬅️ Configure parameters and generate a network to start the simulation!")
-
-# Batch Simulation Interface
-st.markdown("---")
-display_batch_simulation_interface()
 

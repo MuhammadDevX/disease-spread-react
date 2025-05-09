@@ -3,6 +3,21 @@ import plotly.graph_objects as go
 import numpy as np
 from typing import Dict, Any, Optional, List
 from src.disease_model import DiseaseState
+from functools import lru_cache
+import streamlit as st
+
+@lru_cache(maxsize=32)
+def get_cached_layout(G: nx.Graph, layout: str, **kwargs) -> Dict[int, tuple]:
+    """Cache network layouts to avoid recalculating them."""
+    if layout == "spring":
+        pos = nx.spring_layout(G, **kwargs)
+    elif layout == "kamada_kawai":
+        pos = nx.kamada_kawai_layout(G, **kwargs)
+    elif layout == "circular":
+        pos = nx.circular_layout(G, **kwargs)
+    else:
+        raise ValueError(f"Unknown layout algorithm: {layout}")
+    return pos
 
 def create_network_figure(
     G: nx.Graph,
@@ -24,88 +39,113 @@ def create_network_figure(
     Returns:
         plotly.graph_objects.Figure: Interactive network visualization
     """
-    # Get node positions based on layout
-    if layout == "spring":
-        pos = nx.spring_layout(G, **kwargs)
-    elif layout == "kamada_kawai":
-        pos = nx.kamada_kawai_layout(G, **kwargs)
-    elif layout == "circular":
-        pos = nx.circular_layout(G, **kwargs)
-    else:
-        raise ValueError(f"Unknown layout algorithm: {layout}")
+    # Get cached node positions
+    pos = get_cached_layout(G, layout, **kwargs)
     
-    # Create figure
+    # Create figure with optimized settings
     fig = go.Figure()
     
-    # Add edges
-    for edge in G.edges():
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
-        
-        # Check if this edge represents an infection path
-        is_infection_path = (
-            infection_sources is not None and
-            edge[1] in infection_sources and
-            infection_sources[edge[1]] == edge[0]
-        )
-        
-        fig.add_trace(go.Scatter(
-            x=[x0, x1], y=[y0, y1],
-            mode='lines',
-            line=dict(
-                color='rgba(255, 0, 0, 0.8)' if is_infection_path else 'rgba(128, 128, 128, 0.3)',
-                width=2 if is_infection_path else 0.5
-            ),
-            hoverinfo='text',
-            text=f"Infection path: {edge[0]} → {edge[1]}" if is_infection_path else None
-        ))
+    # Prepare edge data
+    edge_x = []
+    edge_y = []
+    edge_colors = []
+    edge_widths = []
+    edge_texts = []
     
-    # Define node colors and sizes based on state
-    node_colors = {
-        DiseaseState.SUSCEPTIBLE: 'rgba(0, 0, 255, 0.8)',    # Blue
-        DiseaseState.EXPOSED: 'rgba(255, 255, 0, 0.8)',      # Yellow
-        DiseaseState.INFECTED: 'rgba(255, 0, 0, 0.8)',       # Red
-        DiseaseState.RECOVERED: 'rgba(0, 255, 0, 0.8)',      # Green
-        DiseaseState.DEAD: 'rgba(0, 0, 0, 0.8)'             # Black
-    }
-    
-    node_sizes = {
-        DiseaseState.SUSCEPTIBLE: 10,
-        DiseaseState.EXPOSED: 12,
-        DiseaseState.INFECTED: 15,
-        DiseaseState.RECOVERED: 10,
-        DiseaseState.DEAD: 8
-    }
-    
-    # Add nodes for each state
-    for state in DiseaseState:
-        nodes = [node for node, s in states.items() if s == state]
-        if nodes:
-            x = [pos[node][0] for node in nodes]
-            y = [pos[node][1] for node in nodes]
+    # Process edges in batches
+    batch_size = 100
+    edges = list(G.edges())
+    for i in range(0, len(edges), batch_size):
+        batch = edges[i:i + batch_size]
+        for edge in batch:
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
             
-            # Create hover text with infection source information
-            hover_texts = []
-            for node in nodes:
-                text = f"Node {node}<br>State: {state.value}"
-                if infection_sources and node in infection_sources:
-                    text += f"<br>Infected by: {infection_sources[node]}"
-                hover_texts.append(text)
+            is_infection_path = (
+                infection_sources is not None and
+                edge[1] in infection_sources and
+                infection_sources[edge[1]] == edge[0]
+            )
             
-            fig.add_trace(go.Scatter(
-                x=x, y=y,
-                mode='markers',
-                marker=dict(
-                    size=node_sizes[state],
-                    color=node_colors[state],
-                    line=dict(width=2, color='DarkSlateGrey')
-                ),
-                name=state.value,
-                hoverinfo='text',
-                text=hover_texts
-            ))
+            edge_x.extend([x0, x1, None])
+            edge_y.extend([y0, y1, None])
+            edge_colors.append('rgba(255, 0, 0, 0.8)' if is_infection_path else 'rgba(128, 128, 128, 0.3)')
+            edge_widths.append(2 if is_infection_path else 0.5)
+            edge_texts.append(f"Infection path: {edge[0]} → {edge[1]}" if is_infection_path else None)
     
-    # Update layout
+    # Add edges in a single trace with optimized settings
+    fig.add_trace(go.Scatter(
+        x=edge_x, y=edge_y,
+        mode='lines',
+        line=dict(
+            color=edge_colors[0] if len(edge_colors) > 0 else 'rgba(128, 128, 128, 0.3)',
+            width=edge_widths[0] if len(edge_widths) > 0 else 0.5
+        ),
+        hoverinfo='text',
+        text=edge_texts,
+        name='Edges',
+        showlegend=False
+    ))
+    
+    # Prepare node data
+    node_x = []
+    node_y = []
+    node_colors = []
+    node_sizes = []
+    node_texts = []
+    
+    # Process nodes in batches
+    nodes = list(G.nodes())
+    for i in range(0, len(nodes), batch_size):
+        batch = nodes[i:i + batch_size]
+        for node in batch:
+            x, y = pos[node]
+            state = states[node]
+            
+            # Enhanced node colors with better visibility
+            node_colors.append({
+                DiseaseState.SUSCEPTIBLE: 'rgba(0, 0, 255, 0.9)',    # Brighter Blue
+                DiseaseState.EXPOSED: 'rgba(255, 255, 0, 0.9)',      # Brighter Yellow
+                DiseaseState.INFECTED: 'rgba(255, 0, 0, 0.9)',       # Brighter Red
+                DiseaseState.RECOVERED: 'rgba(0, 255, 0, 0.9)',      # Brighter Green
+                DiseaseState.DEAD: 'rgba(0, 0, 0, 0.9)'             # Brighter Black
+            }[state])
+            
+            # Enhanced node sizes for better visibility
+            node_sizes.append({
+                DiseaseState.SUSCEPTIBLE: 12,
+                DiseaseState.EXPOSED: 14,
+                DiseaseState.INFECTED: 16,
+                DiseaseState.RECOVERED: 12,
+                DiseaseState.DEAD: 10
+            }[state])
+            
+            # Enhanced hover text
+            text = f"Node {node}<br>State: {state.value}"
+            if infection_sources and node in infection_sources:
+                text += f"<br>Infected by: {infection_sources[node]}"
+                text += f"<br>Time of infection: {infection_sources.get('time', 'Unknown')}"
+            node_texts.append(text)
+            
+            node_x.append(x)
+            node_y.append(y)
+    
+    # Add nodes in a single trace with optimized settings
+    fig.add_trace(go.Scatter(
+        x=node_x, y=node_y,
+        mode='markers',
+        marker=dict(
+            size=node_sizes,
+            color=node_colors,
+            line=dict(width=2, color='DarkSlateGrey'),
+            symbol='circle'
+        ),
+        hoverinfo='text',
+        text=node_texts,
+        name='Nodes'
+    ))
+    
+    # Optimized layout settings
     fig.update_layout(
         showlegend=True,
         hovermode='closest',
@@ -118,6 +158,14 @@ def create_network_figure(
             y=0.99,
             xanchor="left",
             x=0.01
+        ),
+        # Add performance optimizations
+        uirevision=True,  # Maintain zoom/pan state
+        transition_duration=0,  # Disable transitions for better performance
+        dragmode='pan',  # Default to pan mode
+        modebar=dict(
+            remove=['lasso2d', 'select2d'],  # Remove unnecessary tools
+            add=['drawopenpath', 'eraseshape']  # Add useful tools
         )
     )
     
@@ -233,46 +281,37 @@ def create_animated_infection_visualization(
     Returns:
         plotly.graph_objects.Figure: Animated network visualization
     """
-    # Get node positions
-    if layout == "spring":
-        pos = nx.spring_layout(G, **kwargs)
-    elif layout == "kamada_kawai":
-        pos = nx.kamada_kawai_layout(G, **kwargs)
-    elif layout == "circular":
-        pos = nx.circular_layout(G, **kwargs)
-    else:
-        raise ValueError(f"Unknown layout algorithm: {layout}")
+    # Get cached node positions
+    pos = get_cached_layout(G, layout, **kwargs)
     
-    # Create figure
+    # Create figure with optimized settings
     fig = go.Figure()
     
-    # Define colors and sizes
+    # Define enhanced colors and sizes
     node_colors = {
-        DiseaseState.SUSCEPTIBLE: 'rgba(0, 0, 255, 0.8)',    # Blue
-        DiseaseState.EXPOSED: 'rgba(255, 255, 0, 0.8)',      # Yellow
-        DiseaseState.INFECTED: 'rgba(255, 0, 0, 0.8)',       # Red
-        DiseaseState.RECOVERED: 'rgba(0, 255, 0, 0.8)',      # Green
-        DiseaseState.DEAD: 'rgba(0, 0, 0, 0.8)'             # Black
+        DiseaseState.SUSCEPTIBLE: 'rgba(0, 0, 255, 0.9)',    # Brighter Blue
+        DiseaseState.EXPOSED: 'rgba(255, 255, 0, 0.9)',      # Brighter Yellow
+        DiseaseState.INFECTED: 'rgba(255, 0, 0, 0.9)',       # Brighter Red
+        DiseaseState.RECOVERED: 'rgba(0, 255, 0, 0.9)',      # Brighter Green
+        DiseaseState.DEAD: 'rgba(0, 0, 0, 0.9)'             # Brighter Black
     }
     
     node_sizes = {
-        DiseaseState.SUSCEPTIBLE: 10,
-        DiseaseState.EXPOSED: 12,
-        DiseaseState.INFECTED: 15,
-        DiseaseState.RECOVERED: 10,
-        DiseaseState.DEAD: 8
+        DiseaseState.SUSCEPTIBLE: 12,
+        DiseaseState.EXPOSED: 14,
+        DiseaseState.INFECTED: 16,
+        DiseaseState.RECOVERED: 12,
+        DiseaseState.DEAD: 10
     }
     
     # Create frames for animation
     frames = []
-    
-    # Track infected nodes across frames
     infected_nodes = set()
     
     # First frame: initial state
     initial_data = []
     
-    # Add edges
+    # Add edges with optimized settings
     edge_x = []
     edge_y = []
     for edge in G.edges():
@@ -287,11 +326,12 @@ def create_animated_infection_visualization(
             y=edge_y,
             mode='lines',
             line=dict(color='rgba(128, 128, 128, 0.3)', width=0.5),
-            hoverinfo='none'
+            hoverinfo='none',
+            showlegend=False
         )
     )
     
-    # Add nodes for each state
+    # Add nodes for each state with enhanced visibility
     for state in DiseaseState:
         nodes = [node for node, s in states.items() if s == state]
         if nodes:
@@ -299,6 +339,16 @@ def create_animated_infection_visualization(
                 infected_nodes.update(nodes)
             x = [pos[node][0] for node in nodes]
             y = [pos[node][1] for node in nodes]
+            
+            # Enhanced hover text
+            hover_texts = []
+            for node in nodes:
+                text = f"Node {node}<br>State: {state.value}"
+                if infection_sources and node in infection_sources:
+                    text += f"<br>Infected by: {infection_sources[node]}"
+                    text += f"<br>Time of infection: {infection_sources.get('time', 'Unknown')}"
+                hover_texts.append(text)
+            
             initial_data.append(
                 go.Scatter(
                     x=x, y=y,
@@ -306,17 +356,18 @@ def create_animated_infection_visualization(
                     marker=dict(
                         size=node_sizes[state],
                         color=node_colors[state],
-                        line=dict(width=2, color='DarkSlateGrey')
+                        line=dict(width=2, color='DarkSlateGrey'),
+                        symbol='circle'
                     ),
                     name=state.value,
                     hoverinfo='text',
-                    text=[f"Node {node}<br>State: {state.value}" for node in nodes]
+                    text=hover_texts
                 )
             )
     
     frames.append(go.Frame(data=initial_data, name="initial"))
     
-    # Create frames for each infection
+    # Create frames for each infection with enhanced animation
     for infected, source in infection_sources.items():
         # First frame: show infection path
         path_frame = []
@@ -337,11 +388,11 @@ def create_animated_infection_visualization(
                 mode='lines',
                 line=dict(color='rgba(128, 128, 128, 0.3)', width=0.5),
                 hoverinfo='none',
-                name="Network"
+                showlegend=False
             )
         )
         
-        # Add all previously infected nodes
+        # Add all previously infected nodes with enhanced visibility
         prev_infected = [node for node in infected_nodes]
         if prev_infected:
             x = [pos[node][0] for node in prev_infected]
@@ -353,7 +404,8 @@ def create_animated_infection_visualization(
                     marker=dict(
                         size=node_sizes[DiseaseState.INFECTED],
                         color=node_colors[DiseaseState.INFECTED],
-                        line=dict(width=2, color='DarkSlateGrey')
+                        line=dict(width=2, color='DarkSlateGrey'),
+                        symbol='circle'
                     ),
                     name="Infected",
                     hoverinfo='text',
@@ -361,7 +413,7 @@ def create_animated_infection_visualization(
                 )
             )
         
-        # Add infection path
+        # Add infection path with enhanced visibility
         x_path = [pos[source][0], pos[infected][0]]
         y_path = [pos[source][1], pos[infected][1]]
         
@@ -370,14 +422,14 @@ def create_animated_infection_visualization(
                 x=x_path,
                 y=y_path,
                 mode='lines',
-                line=dict(color='rgba(255, 0, 0, 0.8)', width=3),
+                line=dict(color='rgba(255, 0, 0, 0.9)', width=3),
                 hoverinfo='text',
                 text=f"Infection path: {source} → {infected}",
                 name="Infection Path"
             )
         )
         
-        # Add the node about to be infected in blue
+        # Add the node about to be infected with enhanced visibility
         path_frame.append(
             go.Scatter(
                 x=[pos[infected][0]],
@@ -386,7 +438,8 @@ def create_animated_infection_visualization(
                 marker=dict(
                     size=node_sizes[DiseaseState.INFECTED],
                     color=node_colors[DiseaseState.SUSCEPTIBLE],
-                    line=dict(width=2, color='DarkSlateGrey')
+                    line=dict(width=2, color='DarkSlateGrey'),
+                    symbol='circle'
                 ),
                 name="New Infection",
                 hoverinfo='text',
@@ -396,11 +449,11 @@ def create_animated_infection_visualization(
         
         frames.append(go.Frame(data=path_frame, name=f"infection_{infected}_path"))
         
-        # Create transition frames for the newly infected node
+        # Create transition frames with enhanced animation
         for i in range(5):  # Create 5 transition frames
             transition_frame = path_frame.copy()
             
-            # Update the transitioning node's color
+            # Update the transitioning node's color with enhanced visibility
             t = i / 4  # t goes from 0 to 1
             r = int(255 * t)  # Red component increases
             b = int(255 * (1 - t))  # Blue component decreases
@@ -408,15 +461,15 @@ def create_animated_infection_visualization(
             # Find and update the transitioning node
             for trace in transition_frame:
                 if trace.name == "New Infection":
-                    trace.marker.color = f'rgba({r}, 0, {b}, 0.8)'
+                    trace.marker.color = f'rgba({r}, 0, {b}, 0.9)'
                     trace.text = [f"Node {infected}<br>State: Transitioning"]
             
             frames.append(go.Frame(data=transition_frame, name=f"infection_{infected}_transition_{i}"))
         
-        # Add final frame with the node fully red
+        # Add final frame with enhanced visibility
         final_frame = path_frame.copy()
         
-        # Update the newly infected node to red
+        # Update the newly infected node to red with enhanced visibility
         for trace in final_frame:
             if trace.name == "New Infection":
                 trace.marker.color = node_colors[DiseaseState.INFECTED]
@@ -434,7 +487,7 @@ def create_animated_infection_visualization(
     # Add frames to figure
     fig.frames = frames
     
-    # Update layout
+    # Update layout with optimized settings
     fig.update_layout(
         showlegend=True,
         hovermode='closest',
@@ -447,6 +500,14 @@ def create_animated_infection_visualization(
             y=0.99,
             xanchor="left",
             x=0.01
+        ),
+        # Add performance optimizations
+        uirevision=True,  # Maintain zoom/pan state
+        transition_duration=0,  # Disable transitions for better performance
+        dragmode='pan',  # Default to pan mode
+        modebar=dict(
+            remove=['lasso2d', 'select2d'],  # Remove unnecessary tools
+            add=['drawopenpath', 'eraseshape']  # Add useful tools
         ),
         updatemenus=[
             dict(
