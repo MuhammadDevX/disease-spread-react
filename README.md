@@ -41,7 +41,7 @@ An interactive web application for simulating disease spread in social networks 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/disease-spread-simulation.git
+git clone https://github.com/MuhammadDevX/disease-spread-simulation.git
 cd disease-spread-simulation
 ```
 
@@ -81,22 +81,6 @@ streamlit run app.py
    - Observe the effects of different interventions
    - Analyze results using the provided visualizations
 
-## Project Structure
-
-```
-disease-spread-simulation/
-├── app.py                  # Main Streamlit application
-├── requirements.txt        # Project dependencies
-├── README.md              # Project documentation
-└── src/
-    ├── disease_model.py   # Disease spread simulation logic
-    ├── generate_network.py # Network generation and analysis
-    ├── policy_engine.py   # Intervention policy management
-    ├── visualize_network.py # Visualization tools
-    ├── batch_simulation.py # Batch simulation and analysis
-    └── batch_interface.py # Batch simulation user interface
-```
-
 ## Dependencies
 
 - Python 3.8+
@@ -112,10 +96,6 @@ disease-spread-simulation/
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgments
 
