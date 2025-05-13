@@ -60,15 +60,15 @@ pip install -r requirements.txt
 
 ## Usage
 
-1. Start the Streamlit application:
+1. Start the Dash application:
 
 ```bash
-streamlit run app.py
+python main.py
 ```
 
-2. Open your web browser and navigate to the provided URL (typically http://localhost:8501)
+2. Open your web browser and navigate to the provided URL (typically http://localhost:8050)
 
-3. Configure simulation parameters in the sidebar:
+3. Configure simulation parameters in the control panel:
 
    - Network settings (size, model)
    - Disease parameters (transmission, recovery, mortality rates)
@@ -84,7 +84,8 @@ streamlit run app.py
 ## Dependencies
 
 - Python 3.8+
-- Streamlit
+- Dash
+- FastAPI
 - NetworkX
 - NumPy
 - Pandas
@@ -100,6 +101,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Acknowledgments
 
 - NetworkX for graph theory and network analysis
-- Streamlit for the web interface
+- Dash for the web interface
 - Plotly for interactive visualizations
 - The epidemiological modeling community for inspiration and guidance

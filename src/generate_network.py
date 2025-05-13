@@ -1,6 +1,7 @@
 import networkx as nx
 import numpy as np
 from typing import Dict, Any
+from time import time
 
 def generate_social_network(num_nodes: int, model_type: str, **kwargs) -> nx.Graph:
     """
@@ -36,6 +37,7 @@ def generate_social_network(num_nodes: int, model_type: str, **kwargs) -> nx.Gra
     else:
         raise ValueError(f"Unknown network model type: {model_type}")
     
+    start_time = time()
     # Add node attributes
     for node in G.nodes():
         G.nodes[node]['state'] = 'S'  # Initial state: Susceptible
@@ -45,6 +47,8 @@ def generate_social_network(num_nodes: int, model_type: str, **kwargs) -> nx.Gra
     for u, v in G.edges():
         G.edges[u, v]['weight'] = np.random.uniform(0.5, 1.0)
     
+    end_time = time()
+    print(f"Network generation time: {end_time - start_time} seconds")
     return G
 
 def get_network_parameters(model_type: str) -> Dict[str, Any]:
@@ -83,6 +87,7 @@ def calculate_network_metrics(G: nx.Graph) -> Dict[str, float]:
     Returns:
         Dict[str, float]: Dictionary of network metrics
     """
+    start_time = time()
     metrics = {
         'average_degree': sum(dict(G.degree()).values()) / G.number_of_nodes(),
         'clustering_coefficient': nx.average_clustering(G),
@@ -102,4 +107,6 @@ def calculate_network_metrics(G: nx.Graph) -> Dict[str, float]:
         metrics['modularity'] = None
         metrics['num_communities'] = None
     
+    end_time = time()
+    print(f"Network metrics calculation time: {end_time - start_time} seconds")
     return metrics

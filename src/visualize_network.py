@@ -4,11 +4,11 @@ import numpy as np
 from typing import Dict, Any, Optional, List
 from src.disease_model import DiseaseState
 from functools import lru_cache
-import streamlit as st
-
+from time import time
 @lru_cache(maxsize=32)
 def get_cached_layout(G: nx.Graph, layout: str, **kwargs) -> Dict[int, tuple]:
     """Cache network layouts to avoid recalculating them."""
+    start_time = time()
     if layout == "spring":
         pos = nx.spring_layout(G, **kwargs)
     elif layout == "kamada_kawai":
@@ -17,6 +17,8 @@ def get_cached_layout(G: nx.Graph, layout: str, **kwargs) -> Dict[int, tuple]:
         pos = nx.circular_layout(G, **kwargs)
     else:
         raise ValueError(f"Unknown layout algorithm: {layout}")
+    end_time = time()
+    print(f"Layout calculation time: {end_time - start_time} seconds")
     return pos
 
 def create_network_figure(
@@ -39,6 +41,7 @@ def create_network_figure(
     Returns:
         plotly.graph_objects.Figure: Interactive network visualization
     """
+    start_time = time()
     # Get cached node positions
     pos = get_cached_layout(G, layout, **kwargs)
     
@@ -168,7 +171,8 @@ def create_network_figure(
             add=['drawopenpath', 'eraseshape']  # Add useful tools
         )
     )
-    
+    end_time = time()
+    print(f"Network visualization time: {end_time - start_time} seconds")
     return fig
 
 def create_time_series_plot(
@@ -185,6 +189,7 @@ def create_time_series_plot(
     Returns:
         plotly.graph_objects.Figure: Time series visualization
     """
+    start_time = time()
     fig = go.Figure()
     
     # Convert history to DataFrame for easier plotting
@@ -207,7 +212,8 @@ def create_time_series_plot(
         yaxis_title="Population Count",
         hovermode="x unified"
     )
-    
+    end_time = time()
+    print(f"Time series plot time: {end_time - start_time} seconds")
     return fig
 
 def create_heatmap(
@@ -226,6 +232,7 @@ def create_heatmap(
     Returns:
         plotly.graph_objects.Figure: Heatmap visualization
     """
+    start_time = time()
     # Get node positions
     pos = nx.spring_layout(G)
     
@@ -258,7 +265,8 @@ def create_heatmap(
         xaxis_title="X Position",
         yaxis_title="Y Position"
     )
-    
+    end_time = time()
+    print(f"Heatmap creation time: {end_time - start_time} seconds")
     return fig
 
 def create_animated_infection_visualization(
@@ -281,6 +289,7 @@ def create_animated_infection_visualization(
     Returns:
         plotly.graph_objects.Figure: Animated network visualization
     """
+    start_time = time()
     # Get cached node positions
     pos = get_cached_layout(G, layout, **kwargs)
     
@@ -534,5 +543,6 @@ def create_animated_infection_visualization(
             )
         ]
     )
-    
+    end_time = time()
+    print(f"Animated infection visualization time: {end_time - start_time} seconds")
     return fig
