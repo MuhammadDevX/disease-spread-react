@@ -143,7 +143,6 @@ class CompareResult(BaseModel):
 # Custom JSON encoder to handle NumPy types
 class NumpyJSONEncoder(json.JSONEncoder):
     def default(self, obj):
-        import numpy as np
         if isinstance(obj, np.integer):
             return int(obj)
         elif isinstance(obj, np.floating):
@@ -155,7 +154,6 @@ class NumpyJSONEncoder(json.JSONEncoder):
 # Helper to convert NodeState, Edge, and SimulationResult to dicts with only native types
 
 def to_native(val):
-    import numpy as np
     if isinstance(val, dict):
         return {k: to_native(v) for k, v in val.items()}
     elif isinstance(val, (np.integer,)):
@@ -270,7 +268,6 @@ async def simulate(params: SimulationParams, sim_state: dict = Body(default=None
             # Seed initial infections
             num_initial_infections = int(num_nodes * initial_infection_rate)
             if num_initial_infections > 0:
-                import numpy as np
                 nodes_to_infect = np.random.choice(list(G.nodes()), size=min(num_initial_infections, len(G.nodes())), replace=False)
                 for node in nodes_to_infect:
                     model.states[node] = DiseaseState.INFECTED
@@ -358,7 +355,6 @@ def batch(params: SimulationParams):
         # Seed initial infections
         num_initial_infections = int(params.num_nodes * params.initial_infection_rate)
         if num_initial_infections > 0:
-            import numpy as np
             nodes_to_infect = np.random.choice(list(G.nodes()), size=min(num_initial_infections, len(G.nodes())), replace=False)
             for node in nodes_to_infect:
                 model.states[node] = DiseaseState.INFECTED
@@ -434,7 +430,6 @@ def policy(params: SimulationParams):
         # Seed initial infections
         num_initial_infections = int(params.num_nodes * params.initial_infection_rate)
         if num_initial_infections > 0:
-            import numpy as np
             nodes_to_infect = np.random.choice(list(G.nodes()), size=min(num_initial_infections, len(G.nodes())), replace=False)
             for node in nodes_to_infect:
                 model.states[node] = DiseaseState.INFECTED
@@ -489,7 +484,6 @@ def compare(params: SimulationParams):
         # Seed initial infections
         num_initial_infections = int(params.num_nodes * params.initial_infection_rate)
         if num_initial_infections > 0:
-            import numpy as np
             nodes_to_infect = np.random.choice(list(G.nodes()), size=min(num_initial_infections, len(G.nodes())), replace=False)
             for node in nodes_to_infect:
                 model.states[node] = DiseaseState.INFECTED
